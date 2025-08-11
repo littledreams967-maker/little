@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Happy Birthday! 🎉</title>
+
+<!--
+  Single-file Birthday Page
+  - Mobile-first, responsive, animated
+  - Photo page-flip with glitter overlay
+  - Balloons rising + pop-up messages per photo
+  - Typewriter main message
+  - Play/Pause music (placeholder audio file)
+  - NEW: CSS 3D cake with candle and subtle flame animation
+  - All CSS below (in <style>), all JS at end of <body>
+-->
+
+<style>
+/* ----------------------- Base / Mobile-first ----------------------- */
+:root{
+  --bg1: #fff0f6;
+  --bg2: #f0fff9;
+  --accent1: #ff4da6;
+  --accent2: #ffb86b;
+  --accent3: #6ee7b7;
+  --glass: rgba(255,255,255,0.6);
+}
+* { box-sizing: border-box; }
+html,body { height:100%; margin:0; font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+body{
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(255,255,255,0.6), transparent),
+              linear-gradient(135deg, var(--bg1), var(--bg2));
+  color: #222;
+  min-height:100vh;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:20px;
+  overflow-x:hidden;
+}
+
+/* container */
+.container {
+  width:100%;
+  max-width:1100px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.9));
+  border-radius:18px;
+  padding:18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  position:relative;
+  overflow:hidden;
+}
+
+/* Header / title */
+.header {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:8px;
+}
+.title-wrap { text-align:left; }
+.hi {
+  font-size:1.05rem;
+  margin:0;
+  color:var(--accent1);
+  font-weight:700;
+  letter-spacing:0.6px;
+}
+.main-title {
+  margin:2px 0 8px 0;
+  font-size:1.55rem;
+  line-height:1.05;
+  color:#222;
+  text-shadow: 0 2px 0 rgba(255,255,255,0.6);
+}
+.subtitle {
+  font-size:0.92rem;
+  color:#555;
+  margin:0;
+}
+
+/* Music control (top-right) */
+.music-btn {
+  background: linear-gradient(135deg,var(--accent1), #ff6fa1);
+  color:white;
+  border:none;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:700;
+  display:inline-flex;
+  gap:8px;
+  align-items:center;
+  cursor:pointer;
+  box-shadow: 0 6px 18px rgba(255,77,166,0.15);
+}
+.music-btn:active { transform:translateY(1px); }
+
+/* layout: stack on mobile, grid on larger */
+.main-grid {
+  display:grid;
+  grid-template-columns: 1fr; /* mobile: single column */
+  gap:16px;
+  align-items:start;
+}
+
+/* left column box (photos + popups) */
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.75));
+  border-radius:14px;
+  padding:12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+/* Photo flip container (3D) */
+.photo-stage {
+  perspective:1400px;
+  width:100%;
+  max-width:360px;
+  margin:0 auto;
+  position:relative;
+}
+.photo-card {
+  width:100%;
+  aspect-ratio: 3/4; /* mobile-friendly */
+  margin: 0 auto;
+  position:relative;
+  transform-style:preserve-3d;
+  transition: transform 1s ease;
+  border-radius:12px;
+  overflow:visible;
+}
+.photo-face{
+  position:absolute;
+  inset:0;
+  border-radius:12px;
+  backface-visibility:hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  overflow:hidden;
+  transform-origin:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.photo-face img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+/* front/back placement */
+.front { transform:rotateY(0deg) translateZ(1px); }
+.back  { transform:rotateY(180deg); }
+
+/* flip animation timeline handled by JS to swap classes for nicer timing */
+
+/* glitter overlay using repeating radial gradient as fallback */
+.glitter {
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  mix-blend-mode:screen;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9) 0px, rgba(255,255,255,0.0) 6px),
+    radial-gradient(circle at 70% 40%, rgba(255,255,255,0.85) 0px, rgba(255,255,255,0.0) 5px),
+    radial-gradient(circle at 40% 80%, rgba(255,255,255,0.75) 0px, rgba(255,255,255,0.0) 4px);
+  opacity:0.6;
+  animation: glitter-move 3.5s linear infinite;
+  transform:translateZ(20px);
+}
+@keyframes glitter-move{
+  0%{ transform: translateY(0) scale(1) rotate(0deg); opacity:0.6}
+  50%{ transform: translateY(-6px) scale(1.02) rotate(2deg); opacity:0.85 }
+  100%{ transform: translateY(0) scale(1) rotate(0deg); opacity:0.6}
+}
+
+/* Pop-up balloon messages container (positioned over photo) */
+.popup {
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:12px;
+  display:flex;
+  gap:8px;
+  pointer-events:none;
+}
+.popup .msg {
+  background: linear-gradient(180deg,#fff,#fff0);
+  padding:8px 12px;
+  border-radius:999px;
+  font-weight:600;
+  color:var(--accent1);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  transform-origin:center bottom;
+  animation: popIn 0.8s ease both;
+}
+@keyframes popIn {
+  0%{ transform: translateY(12px) scale(.9); opacity:0}
+  60%{ transform: translateY(-6px) scale(1.02); opacity:1 }
+  100%{ transform: translateY(0) scale(1); }
+}
+
+/* Balloons rising (full-screen absolute) */
+.balloon {
+  position:fixed;
+  bottom:-120px;
+  width:44px;
+  height:60px;
+  border-radius:50% 50% 45% 45%;
+  background: linear-gradient(135deg, #ff9ccf, #ff4da6);
+  box-shadow: inset -6px -10px 20px rgba(0,0,0,0.12);
+  transform-origin:center bottom;
+  animation: floatUp 6s linear forwards;
+  z-index:40;
+}
+.balloon::after{
+  content:'';
+  position:absolute;
+  left:50%;
+  bottom:-24px;
+  width:2px; height:24px;
+  background: rgba(0,0,0,0.18);
+  transform:translateX(-50%);
+}
+@keyframes floatUp {
+  0% { transform: translateY(0) rotate(0deg); opacity:1; }
+  100%{ transform: translateY(-110vh) rotate(18deg); opacity:0; }
+}
+
+/* Main message (typewriter effect) */
+.main-message {
+  font-size:1.02rem;
+  margin:8px 0 0;
+  min-height:48px;
+  color:#222;
+}
+.typewriter-word {
+  display:inline-block;
+  white-space:nowrap;
+  overflow:hidden;
+  border-right: .14em solid rgba(34,34,34,0.6);
+  animation: caret 0.9s steps(1) infinite;
+}
+@keyframes caret { 50% { border-color: transparent; } }
+
+/* 3D Cake (new) */
+.cake-wrap {
+  perspective:1200px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:12px 0;
+}
+.cake {
+  width:170px;
+  transform-style:preserve-3d;
+  position:relative;
+  margin:0 auto;
+}
+/* Cake layers - base, middle, top */
+.layer {
+  width:170px;
+  height:42px;
+  border-radius:18px;
+  transform-origin:center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  position:relative;
+  margin-bottom:8px;
+}
+/* bottom cake */
+.layer.bottom { background: linear-gradient(180deg,#f7d6c9,#f2a089); transform:translateZ(-20px) rotateX(8deg); }
+/* middle */
+.layer.mid { width:140px; height:38px; margin:0 auto 8px; background: linear-gradient(180deg,#ffd9e0,#ffb3c9); transform:translateZ(6px) rotateX(4deg); border-radius:14px; }
+/* top */
+.layer.top { width:110px; height:34px; margin:0 auto; background: linear-gradient(180deg,#fff7d6,#ffd86a); transform:translateZ(26px) rotateX(2deg); border-radius:12px; }
+
+/* frosting drips (pseudo elements) */
+.layer::before, .layer::after {
+  content:"";
+  position:absolute;
+  bottom: -10px;
+  width:36%;
+  height:16px;
+  border-radius:10px;
+  background: rgba(255,255,255,0.85);
+  transform:translateZ(40px) rotateX(20deg);
+  opacity:0.9;
+}
+.layer::after { left:auto; right:6px; transform:translateZ(40px) rotateX(18deg) scaleX(.9); }
+.layer::before { left:6px; }
+
+/* candle (on top) */
+.candle {
+  position:absolute;
+  left:50%;
+  top:-36px;
+  transform:translateX(-50%);
+  width:8px;
+  height:36px;
+  border-radius:4px;
+  background: linear-gradient(180deg,#fff,#ffd1d1);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+}
+.candle::after{
+  content:'';
+  width:10px; height:10px;
+  background: radial-gradient(circle at 30% 30%, #fff8b3, #ffd24d 50%, #ff6a00 90%);
+  border-radius:50%;
+  margin-top:-6px;
+  filter: blur(.6px);
+  animation: flicker 1.2s infinite;
+  box-shadow:0 0 14px rgba(255,160,60,0.7), 0 0 6px rgba(255,200,100,0.6);
+}
+/* candle wick */
+.candle .wick {
+  width:2px; height:8px; background:#3a2b23; margin-top:2px; border-radius:1px;
+  transform:translateY(2px);
+  opacity:0.9;
+}
+
+/* flicker animation */
+@keyframes flicker {
+  0% { transform: translateY(0) scale(1); opacity:1; filter:brightness(1); }
+  40% { transform: translateY(-2px) scale(0.98); opacity:0.9; filter:brightness(1.1); }
+  70% { transform: translateY(0) scale(1.02); opacity:1; filter:brightness(1.05); }
+  100% { transform: translateY(0) scale(1); opacity:1; }
+}
+
+/* Decorative 3D text effect for greeting (slight extrusion) */
+.greeting {
+  font-size:1.15rem;
+  font-weight:800;
+  letter-spacing:0.6px;
+  color:var(--accent2);
+  text-shadow: 0 6px 12px rgba(0,0,0,0.08), 0 2px 0 rgba(255,255,255,0.6);
+}
+
+/* Desktop / larger screens layout tweaks */
+@media(min-width:900px){
+  .main-grid {
+    grid-template-columns: 1fr 420px; /* photos left, cake & extras right */
+    gap:20px;
+  }
+  .photo-stage { margin-top:6px; }
+  .main-title { font-size:2rem; }
+  .main-message { font-size:1.05rem; }
+  .cake { width:230px; }
+  .layer { width:230px; height:56px; border-radius:20px; }
+  .layer.mid { width:190px; height:48px; border-radius:16px; }
+  .layer.top { width:148px; height:42px; border-radius:14px; }
+}
+
+/* small animation helper */
+.fade-in { animation: fadeIn .8s ease both; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px);} to { opacity:1; transform:translateY(0);} }
+
+</style>
+</head>
+<body>
+
+<div class="container fade-in">
+  <!-- Header -->
+  <div class="header">
+    <div class="title-wrap">
+      <p class="hi">🎈 Surprise</p>
+      <h1 class="main-title">Happy Birthday, <span id="sisterNameDisplay">[SISTER NAME]</span>!</h1>
+      <p class="subtitle">A small page made with lots of love — swipe photos, enjoy music & cake 🍰</p>
+    </div>
+
+    <!-- Music control (audio is a placeholder file) -->
+    <div>
+      <button class="music-btn" id="musicBtn" aria-pressed="false" title="Play / Pause music">
+        <span id="musicIcon">▶️</span>
+        <span id="musicLabel">Play Music</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main grid: left = photos, right = cake & message -->
+  <div class="main-grid">
+    <!-- LEFT: Photos & popups -->
+    <div class="card">
+      <!-- Main animated message (typewriter style) -->
+      <div class="main-message" aria-live="polite">
+        <span class="greeting">To my dearest </span>
+        <span id="sisterNameInline" style="font-weight:700; color:var(--accent1); margin-left:6px;">[SISTER NAME]</span>
+        <div style="margin-top:8px;">
+          <span id="typewriter" class="typewriter-word">[Your warm birthday message will type here]</span>
+        </div>
+      </div>
+
+      <!-- Photo stage (page-flip) -->
+      <div style="margin-top:12px; display:flex; gap:12px; align-items:center; justify-content:center; flex-direction:column;">
+        <div class="photo-stage" id="photoStage">
+          <div class="photo-card" id="photoCard">
+            <div class="photo-face front" id="faceFront">
+              <img id="imgFront" src="https://via.placeholder.com/360x480?text=Photo+1" alt="Photo 1"/>
+              <div class="glitter" aria-hidden="true"></div>
+            </div>
+            <div class="photo-face back" id="faceBack">
+              <img id="imgBack" src="https://via.placeholder.com/360x480?text=Photo+2" alt="Photo 2"/>
+              <div class="glitter" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <!-- popup messages appear here -->
+          <div class="popup" id="popupArea" aria-hidden="true"></div>
+        </div>
+
+        <!-- controls for manual flip on touch/click (optional) -->
+        <div style="display:flex; gap:10px; align-items:center; justify-content:center; margin-top:8px;">
+          <button id="prevBtn" style="background:transparent;border:1px solid #eee;padding:8px 10px;border-radius:10px;cursor:pointer;">◀ Prev</button>
+          <button id="nextBtn" style="background:linear-gradient(90deg,var(--accent3),#7be6d0);border:none;padding:8px 12px;border-radius:10px;cursor:pointer;color:#034; font-weight:700;">Next ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Cake & extras -->
+    <div class="card" style="display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:flex-start;">
+      <!-- 3D Cake -->
+      <div class="cake-wrap" aria-hidden="true">
+        <div class="cake" id="cake">
+          <div class="layer bottom"></div>
+          <div class="layer mid"></div>
+          <div class="layer top"></div>
+
+          <!-- candle -->
+          <div class="candle" role="img" aria-label="candle with flame">
+            <div class="wick"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Short message card -->
+      <div style="text-align:center;">
+        <div class="greeting">Make a wish!</div>
+        <p style="margin:6px 12px 0 12px; color:#444;">Click the candle to blow it out (fun effect), or use the Next button to change photos.</p>
+      </div>
+
+      <!-- small hint / CTA -->
+      <div style="margin-top:auto; width:100%; text-align:center; font-size:0.92rem; color:#555;">
+        Add your own photo URLs & messages below in the script section to personalize this page.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Audio element (placeholder file). To use, replace 'birthday-song.mp3' with your audio URL / file -->
+<audio id="bgAudio" loop preload="auto">
+  <source src="birthday-song.mp3" type="audio/mpeg" />
+  <!-- If autoplay is desired, many browsers block it unless muted or user interacted.
+       We provide a Play/Pause button so user can start playback. -->
+</audio>
+
+<script>
+/* ------------------------------------------
+   Configuration - Replace placeholders below
+   - sisterName: Recipient's name
+   - mainMessage: The main typewriter message
+   - secondaryMessages: Array used for pop-ups per photo
+   - photos: Array of photo URLs (will be displayed in order)
+   - audioFile: Replace 'birthday-song.mp3' with your audio filename/URL or keep placeholder
+--------------------------------------------*/
+const config = {
+  sisterName: "DIYA",
+  mainMessage: "Wishing you joy, love, laughter — today and always! 🎂✨", // typewriter-style main message
+  secondaryMessages: [
+    "Happy Birthday! 🎉",
+    "Hope you have an amazing day! — Love you",
+    "Glow on, superstar! ✨",
+    "Cake + Hugs = Perfect Day 🍰"
+  ],
+  photos: [
+    // placeholder images — replace with real URLs later
+    "https://i.postimg.cc/g27nDK3K/Whats-App-Image-2025-08-11-at-15-22-23-bd67029a.jpg",
+    "https://i.postimg.cc/V6gw7Y3c/Whats-App-Image-2025-08-11-at-15-22-25-d1447666.jpg",
+    "https://i.postimg.cc/wxFx2Vps/Whats-App-Image-2025-08-11-at-15-22-22-22b5f609.jpg",
+    "https://i.postimg.cc/hGqqcznB/Whats-App-Image-2025-08-11-at-15-22-24-2186f313.jpg",
+    "https://i.postimg.cc/4y0rMnPj/Whats-App-Image-2025-08-11-at-15-22-24-9c7057b9.jpg"
+  ],
+  audioFile: "https://voca.ro/1ii0wSzwTrrr" // replace this path with your audio file path if available
+};
+
+/* ------------------ Initialize UI with config ------------------ */
+document.getElementById('sisterNameDisplay').innerText = config.sisterName;
+document.getElementById('sisterNameInline').innerText = config.sisterName;
+document.getElementById('bgAudio').querySelector('source').src = config.audioFile;
+document.getElementById('bgAudio').load();
+
+/* ------------------ Typewriter main message ------------------ */
+/* We'll type word-by-word with a slight pause between words for readability */
+const typeEl = document.getElementById('typewriter');
+function typewriterText(text, wordDelay=420, restartAfter=5000){
+  const words = text.split(' ');
+  let i=0;
+  typeEl.innerText = "";
+  const run = () => {
+    if(i < words.length){
+      // append next word
+      typeEl.innerText = (typeEl.innerText ? typeEl.innerText + " " : "") + words[i];
+      i++;
+      // set small caret blink (handled by CSS)
+      setTimeout(run, wordDelay);
+    } else {
+      // completed - restart after delay (nice loop)
+      setTimeout(()=>{
+        i=0;
+        typeEl.innerText = "";
+        setTimeout(run, 700);
+      }, restartAfter);
+    }
+  };
+  run();
+}
+typewriterText(config.mainMessage, 360, 5000);
+
+/* ------------------ Photo page-flip behavior ------------------ */
+/* We'll use a simple flip toggle: swap images into front/back and animate a rotateY */
+const photoCard = document.getElementById('photoCard');
+const imgFront = document.getElementById('imgFront');
+const imgBack  = document.getElementById('imgBack');
+const popupArea = document.getElementById('popupArea');
+
+let photoIndex = 0;
+let isFlipped = false;
+let autoFlipInterval = null;
+
+// preload images
+config.photos.forEach(url => { const i=new Image(); i.src=url; });
+
+// function to update faces for next index (preload into the non-visible side)
+function prepareNextPhoto(nextIndex){
+  // decide which face to set
+  if(!isFlipped){
+    imgBack.src = config.photos[nextIndex % config.photos.length];
+  } else {
+    imgFront.src = config.photos[nextIndex % config.photos.length];
+  }
+}
+
+// run initial load
+imgFront.src = config.photos[0 % config.photos.length];
+imgBack.src  = config.photos[1 % config.photos.length];
+
+// small helper to show a floating popup message near the photo
+function showPopup(message){
+  popupArea.innerHTML = ''; // clear old
+  const msg = document.createElement('div');
+  msg.className = 'msg';
+  msg.innerText = message;
+  msg.style.background = 'linear-gradient(180deg,#fff,#fff)';
+  msg.style.padding = '8px 12px';
+  msg.style.borderRadius = '999px';
+  popupArea.appendChild(msg);
+  // remove after a while
+  setTimeout(()=> { popupArea.innerHTML = ''; }, 3800);
+}
+
+// flip action (animates by toggling rotation)
+function flipToNext(){
+  // increment index to the next photo
+  photoIndex = (photoIndex + 1) % config.photos.length;
+  // prepare image in back/front as needed
+  prepareNextPhoto((photoIndex + 1) % config.photos.length);
+
+  // animate flip: rotateY by toggling 'isFlipped'
+  isFlipped = !isFlipped;
+  photoCard.style.transition = 'transform 900ms cubic-bezier(.2,.9,.3,1)';
+  photoCard.style.transform = isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)';
+
+  // show a matching popup message from secondaryMessages
+  const msg = config.secondaryMessages[photoIndex % config.secondaryMessages.length] || "Happy Birthday!";
+  showPopup(msg);
+
+  // spawn a decorative balloon for fun
+  spawnBalloon();
+}
+
+// manual controls
+document.getElementById('nextBtn').addEventListener('click', ()=>{ flipToNext(); resetAutoFlip(); });
+document.getElementById('prevBtn').addEventListener('click', ()=>{
+  // go backwards
+  photoIndex = (photoIndex - 1 + config.photos.length) % config.photos.length;
+  // set both faces so flip shows previous image
+  imgFront.src = config.photos[photoIndex % config.photos.length];
+  imgBack.src  = config.photos[(photoIndex+1) % config.photos.length];
+  isFlipped = false;
+  photoCard.style.transform = 'rotateY(0deg)';
+  showPopup(config.secondaryMessages[photoIndex % config.secondaryMessages.length]);
+  resetAutoFlip();
+});
+
+/* auto flip every 6 seconds */
+function startAutoFlip(){
+  autoFlipInterval = setInterval(()=>{ flipToNext(); }, 6000);
+}
+function resetAutoFlip(){
+  if(autoFlipInterval) clearInterval(autoFlipInterval);
+  startAutoFlip();
+}
+startAutoFlip();
+
+/* touch swipe support for mobile: left/right to navigate */
+let touchStartX = 0;
+photoCard.addEventListener('touchstart', (e)=> { touchStartX = e.changedTouches[0].clientX; }, {passive:true});
+photoCard.addEventListener('touchend', (e)=> {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if(Math.abs(dx) > 50){
+    if(dx < 0) flipToNext(); else { // swipe right = previous
+      document.getElementById('prevBtn').click();
+    }
+    resetAutoFlip();
+  }
+});
+
+/* ------------------ Balloons spawn ------------------ */
+function spawnBalloon(){
+  const balloon = document.createElement('div');
+  balloon.className = 'balloon';
+  // randomize left position and color variation
+  const left = Math.random() * 80 + 8; // between 8% and 88%
+  balloon.style.left = left + 'vw';
+  // color gradient variations:
+  const r = Math.floor(220 + Math.random()*35);
+  const g = Math.floor(120 + Math.random()*120);
+  const b = Math.floor(120 + Math.random()*200);
+  balloon.style.background = `linear-gradient(135deg, rgb(${r},${g},${b}), rgba(${Math.floor(r*0.7)},${Math.floor(g*0.7)},${Math.floor(b*0.7)},1))`;
+  balloon.style.animationDuration = (5 + Math.random()*3) + 's';
+  document.body.appendChild(balloon);
+  // cleanup
+  setTimeout(()=> { balloon.remove(); }, 7800);
+}
+
+/* ------------------ Music control logic ------------------ */
+const audio = document.getElementById('bgAudio');
+const musicBtn = document.getElementById('musicBtn');
+const musicIcon = document.getElementById('musicIcon');
+const musicLabel = document.getElementById('musicLabel');
+
+// toggle play/pause on user click
+musicBtn.addEventListener('click', async ()=>{
+  if(audio.paused){
+    try {
+      await audio.play();
+      musicIcon.innerText = '⏸️';
+      musicLabel.innerText = 'Pause Music';
+      musicBtn.setAttribute('aria-pressed','true');
+    } catch(err){
+      // autoplay may be blocked; ask user to interact — here we show a short message
+      alert("Browser blocked autoplay. Please click Play again to allow audio.");
+    }
+  } else {
+    audio.pause();
+    musicIcon.innerText = '▶️';
+    musicLabel.innerText = 'Play Music';
+    musicBtn.setAttribute('aria-pressed','false');
+  }
+});
+
+/* ------------------ Candle interactivity (blow out) ------------------ */
+const cake = document.getElementById('cake');
+const candle = cake.querySelector('.candle');
+
+let candleLit = true;
+candle.style.cursor = 'pointer';
+candle.addEventListener('click', ()=> {
+  if(candleLit){
+    // "blow out" animation: fade candle flame and reduce glow
+    candle.querySelector('::after');
+    candle.querySelector('.wick').style.opacity = '0';
+    candle.querySelector('::after');
+    // implement by adding a CSS class or inline style adjustments:
+    candle.style.opacity = '0.7';
+    candleLit = false;
+    // small confetti-like effect: spawn multi balloons
+    for(let i=0;i<8;i++){ setTimeout(spawnBalloon, i*120); }
+    // message
+    showPopup("Make a wish! ✨");
+  } else {
+    // relight
+    candle.style.opacity = '1';
+    candleLit = true;
+    showPopup("Relit! 🎉");
+  }
+});
+
+/* ------------------ Accessibility: keyboard navigation ------------------ */
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') { document.getElementById('nextBtn').click(); }
+  if(e.key === 'ArrowLeft')  { document.getElementById('prevBtn').click(); }
+  if(e.key === ' ') { musicBtn.click(); e.preventDefault(); }
+});
+
+/* ------------------ Utility: replace placeholder text easily -------------- */
+/* If you want the script to automatically replace [PLACEHOLDER]s in the HTML,
+   you can set values in config above. We already used config to set the main areas,
+   but if you have any other placeholders, update here. */
+
+</script>
+
+</body>
+</html>
